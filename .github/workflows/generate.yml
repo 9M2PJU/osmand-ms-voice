@@ -76,8 +76,11 @@ jobs:
 
       - name: Post-process shard to ogg
         run: |
+          shopt -s nullglob
           mkdir -p shard_oggs
-          for w in wavs/*.wav; do
+          wavs=(wavs/*.wav)
+          if [ ${#wavs[@]} -eq 0 ]; then echo "no wavs in this shard, skipping"; exit 0; fi
+          for w in "${wavs[@]}"; do
             base=$(basename "$w" .wav)
             ffmpeg -y -loglevel error -i "$w" -af \
               "silenceremove=start_periods=1:start_duration=0.1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_duration=0.1:start_threshold=-50dB,areverse,atempo=0.85,loudnorm=I=-16:TP=-1.5:LRA=11" \
@@ -86,6 +89,7 @@ jobs:
           ls shard_oggs | wc -l
 
       - name: Upload shard oggs
+        if: hashFiles('shard_oggs/*.ogg') != ''
         uses: actions/upload-artifact@v4
         with:
           name: oggs-shard-${{ matrix.shard }}
