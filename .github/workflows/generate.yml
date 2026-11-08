@@ -15,6 +15,9 @@ on:
       seed:
         description: Random seed for reproducible takes, empty = random
         default: ""
+      temperature:
+        description: Sampling temperature, lower is calmer (default 0.7)
+        default: ""
       shards:
         description: Parallel synth jobs
         default: "5"
@@ -69,7 +72,7 @@ jobs:
           EOF
 
       - name: Synthesize shard clips
-        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}" --shard "${{ matrix.shard }}/${{ inputs.shards }}" ${{ inputs.force != '' && '--force' || '' }} ${{ inputs.seed != '' && format('--seed {0}', inputs.seed) || '' }}
+        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}" --shard "${{ matrix.shard }}/${{ inputs.shards }}" ${{ inputs.force != '' && '--force' || '' }} ${{ inputs.seed != '' && format('--seed {0}', inputs.seed) || '' }} ${{ inputs.temperature != '' && format('--temperature {0}', inputs.temperature) || '' }}
 
       - name: Post-process shard to ogg
         run: |

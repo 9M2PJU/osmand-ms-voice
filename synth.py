@@ -52,6 +52,7 @@ def main():
     ap.add_argument("--force", action="store_true",
                     help="regenerate even if the wav already exists")
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--temperature", type=float, default=0.7)
     ap.add_argument("--shard", default="",
                     help="shard filter as INDEX/TOTAL, e.g. 2/5")
     args = ap.parse_args()
@@ -87,7 +88,7 @@ def main():
             gen = model.generate(
                 **inputs,
                 max_new_tokens=1024,
-                temperature=0.7,
+                temperature=args.temperature,
                 do_sample=True,
                 repetition_penalty=1.1,
             )
