@@ -1,0 +1,75 @@
+name: Generate Malay recorded voice
+
+on:
+  workflow_dispatch:
+    inputs:
+      speaker:
+        description: TTS speaker voice
+        default: idayu
+      only:
+        description: Comma-separated ogg names to (re)generate, empty = all missing
+        default: ""
+
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: System audio deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y espeak-ng espeak-ng-data sox vorbis-tools ffmpeg zip
+
+      - name: Python deps (CPU torch)
+        run: |
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install transformers accelerate soundfile librosa nltk pyyaml munch pydub tqdm einops phonemizer huggingface_hub "git+https://github.com/mesolitica/DistilCodec" wandb tensorboard vector_quantize_pytorch
+          python patch_codec.py
+
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: ms-voice-models-v1
+
+      - name: Cache generated wavs (resume across runs)
+        uses: actions/cache@v4
+        with:
+          path: wavs
+          key: ms-voice-wavs-${{ hashFiles('manifest.json') }}
+
+      - name: Download models
+        env:
+          HF_HUB_OFFLINE: "0"
+        run: |
+          python - <<'EOF'
+          from huggingface_hub import snapshot_download
+          snapshot_download("mesolitica/Malaysian-TTS-0.6B-v1", local_dir="models/qwen-tts",
+                            allow_patterns=["*.json", "*.txt", "*.jinja", "*.safetensors"])
+          snapshot_download("IDEA-Emdoor/DistilCodec-v1.0", local_dir="models/distilcodec",
+                            allow_patterns=["model_config.json", "g_00204000"])
+          EOF
+
+      - name: Synthesize missing clips
+        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}"
+
+      - name: Post-process to ogg
+        run: ./postprocess.sh
+
+      - name: Package ms_0.voice.zip
+        run: ./package.sh
+
+      - name: Upload pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms-voice-pack
+          path: |
+            ms_0.voice.zip
+            voice/ms/voice/*.ogg
