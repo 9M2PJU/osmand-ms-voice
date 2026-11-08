@@ -9,11 +9,18 @@ on:
       only:
         description: Comma-separated ogg names to (re)generate, empty = all missing
         default: ""
+      shards:
+        description: Parallel synth jobs
+        default: "5"
 
 jobs:
   synth:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
 
@@ -43,11 +50,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: wavs
-          key: ms-voice-wavs-${{ hashFiles('manifest.json') }}
+          key: ms-voice-wavs-${{ matrix.shard }}-${{ hashFiles('manifest.json') }}
 
       - name: Download models
-        env:
-          HF_HUB_OFFLINE: "0"
         run: |
           python - <<'EOF'
           from huggingface_hub import snapshot_download
@@ -57,14 +62,50 @@ jobs:
                             allow_patterns=["model_config.json", "g_00204000"])
           EOF
 
-      - name: Synthesize missing clips
-        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}"
+      - name: Synthesize shard clips
+        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}" --shard "${{ matrix.shard }}/${{ inputs.shards }}"
 
-      - name: Post-process to ogg
-        run: ./postprocess.sh
+      - name: Post-process shard to ogg
+        run: |
+          mkdir -p shard_oggs
+          for w in wavs/*.wav; do
+            base=$(basename "$w" .wav)
+            ffmpeg -y -loglevel error -i "$w" -af \
+              "silenceremove=start_periods=1:start_duration=0.1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_duration=0.1:start_threshold=-50dB,areverse,atempo=0.85,loudnorm=I=-16:TP=-1.5:LRA=11" \
+              -c:a libvorbis -q:a 4 "shard_oggs/$base.ogg"
+          done
+          ls shard_oggs | wc -l
+
+      - name: Upload shard oggs
+        uses: actions/upload-artifact@v4
+        with:
+          name: oggs-shard-${{ matrix.shard }}
+          path: shard_oggs/*.ogg
+
+  pack:
+    runs-on: ubuntu-latest
+    needs: synth
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Merge shard oggs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: oggs-shard-*
+          path: voice/ms/voice
+          merge-multiple: true
 
       - name: Package ms_0.voice.zip
-        run: ./package.sh
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y zip
+          mkdir -p voice/ms/voice
+          cp ms_tts.js voice/ms/ms_tts.js
+          touch voice/ms/.nomedia
+          ls voice/ms/voice | wc -l
+          rm -f ms_0.voice.zip
+          echo "Voice Data Malay (ms)" | zip ms_0.voice.zip voice/ms/ms_tts.js -c
+          zip ms_0.voice.zip voice/ms/voice/*.ogg voice/ms/.nomedia
+          ls -l ms_0.voice.zip
 
       - name: Upload pack
         uses: actions/upload-artifact@v4

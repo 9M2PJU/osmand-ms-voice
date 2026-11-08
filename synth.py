@@ -49,6 +49,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--speaker", default="idayu")
     ap.add_argument("--only", default="")
+    ap.add_argument("--shard", default="",
+                    help="shard filter as INDEX/TOTAL, e.g. 2/5")
     args = ap.parse_args()
 
     print("loading codec...", flush=True)
@@ -63,6 +65,9 @@ def main():
     manifest = json.load(open(MANIFEST))
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     items = [(k, v) for k, v in manifest.items() if not only or k in only]
+    if args.shard:
+        idx, total = (int(x) for x in args.shard.split("/"))
+        items = [it for n, it in enumerate(items) if n % total == idx]
     os.makedirs(WAVS_DIR, exist_ok=True)
 
     for i, (fname, text) in enumerate(items):
