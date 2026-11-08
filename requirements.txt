@@ -15,3 +15,4 @@ wandb
 tensorboard
 vector_quantize_pytorch
 git+https://github.com/mesolitica/DistilCodec
+matplotlib
