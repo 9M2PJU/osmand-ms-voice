@@ -49,6 +49,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--speaker", default="idayu")
     ap.add_argument("--only", default="")
+    ap.add_argument("--force", action="store_true",
+                    help="regenerate even if the wav already exists")
+    ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--shard", default="",
                     help="shard filter as INDEX/TOTAL, e.g. 2/5")
     args = ap.parse_args()
@@ -65,6 +68,8 @@ def main():
     manifest = json.load(open(MANIFEST))
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     items = [(k, v) for k, v in manifest.items() if not only or k in only]
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
     if args.shard:
         idx, total = (int(x) for x in args.shard.split("/"))
         items = [it for n, it in enumerate(items) if n % total == idx]
@@ -72,7 +77,7 @@ def main():
 
     for i, (fname, text) in enumerate(items):
         out = os.path.join(WAVS_DIR, fname.replace(".ogg", ".wav"))
-        if os.path.exists(out):
+        if os.path.exists(out) and not args.force:
             print("[%d/%d] %s exists, skipping" % (i + 1, len(items), fname), flush=True)
             continue
         t0 = time.time()

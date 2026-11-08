@@ -9,6 +9,12 @@ on:
       only:
         description: Comma-separated ogg names to (re)generate, empty = all missing
         default: ""
+      force:
+        description: Regenerate even if the wav already exists
+        default: ""
+      seed:
+        description: Random seed for reproducible takes, empty = random
+        default: ""
       shards:
         description: Parallel synth jobs
         default: "5"
@@ -63,7 +69,7 @@ jobs:
           EOF
 
       - name: Synthesize shard clips
-        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}" --shard "${{ matrix.shard }}/${{ inputs.shards }}"
+        run: python synth.py --speaker "${{ inputs.speaker }}" --only "${{ inputs.only }}" --shard "${{ matrix.shard }}/${{ inputs.shards }}" ${{ inputs.force != '' && '--force' || '' }} ${{ inputs.seed != '' && format('--seed {0}', inputs.seed) || '' }}
 
       - name: Post-process shard to ogg
         run: |
