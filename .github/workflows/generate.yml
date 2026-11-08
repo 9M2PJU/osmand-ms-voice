@@ -30,7 +30,7 @@ jobs:
       - name: Python deps (CPU torch)
         run: |
           pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install transformers accelerate soundfile librosa nltk pyyaml munch pydub tqdm einops phonemizer huggingface_hub "git+https://github.com/mesolitica/DistilCodec" wandb tensorboard vector_quantize_pytorch
+          pip install transformers accelerate soundfile librosa nltk pyyaml munch pydub tqdm einops matplotlib phonemizer huggingface_hub "git+https://github.com/mesolitica/DistilCodec" wandb tensorboard vector_quantize_pytorch
           python patch_codec.py
 
       - name: Cache models
