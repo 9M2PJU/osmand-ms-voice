@@ -1,0 +1,17 @@
+# torch/torchaudio (CPU) installed separately via the PyTorch index in CI.
+transformers
+accelerate
+soundfile
+librosa
+nltk
+pyyaml
+munch
+pydub
+tqdm
+einops
+phonemizer
+huggingface_hub
+wandb
+tensorboard
+vector_quantize_pytorch
+git+https://github.com/mesolitica/DistilCodec
