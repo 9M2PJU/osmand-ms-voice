@@ -18,6 +18,9 @@ on:
       temperature:
         description: Sampling temperature, lower is calmer (default 0.7)
         default: ""
+      raw:
+        description: Skip post-processing (straight wav to ogg) to audition the factory sound
+        default: ""
       shards:
         description: Parallel synth jobs
         default: "5"
@@ -84,6 +87,10 @@ jobs:
           # change, no dynamic loudness (both suspected of stutter artifacts).
           for w in "${wavs[@]}"; do
             base=$(basename "$w" .wav)
+            if [ -n "${{ inputs.raw }}" ]; then
+              ffmpeg -y -loglevel error -i "$w" -c:a libvorbis -q:a 4 "shard_oggs/$base.ogg"
+              continue
+            fi
             maxv=$(ffmpeg -i "$w" -af volumedetect -vn -sn -dn -f null /dev/null 2>&1 | grep max_volume | awk '{print $5}')
             gain=$(awk -v m="$maxv" 'BEGIN{ if (m=="n/a"||m=="-inf") g=0; else { g=-1.0-m; if (g>12) g=12; if (g<0) g=0 } printf "%.1f", g }')
             ffmpeg -y -loglevel error -i "$w" -af \
