@@ -111,14 +111,18 @@ jobs:
       - name: Package ms_0.voice.zip
         run: |
           sudo apt-get update -y && sudo apt-get install -y zip
-          mkdir -p voice/ms/voice
+          mkdir -p voice/ms/voice flat
           cp ms_tts.js voice/ms/ms_tts.js
           touch voice/ms/.nomedia
           ls voice/ms/voice | wc -l
+          # Flat entries: the app extracts voice zips into voice/<lang>/,
+          # so paths inside the zip must be flat (see gen_voice.sh upstream).
+          cp voice/ms/voice/*.ogg voice/ms/ms_tts.js voice/ms/.nomedia flat/
           rm -f ms_0.voice.zip
-          echo "Voice Data Malay (ms)" | zip ms_0.voice.zip voice/ms/ms_tts.js -c
-          zip ms_0.voice.zip voice/ms/voice/*.ogg voice/ms/.nomedia
-          ls -l ms_0.voice.zip
+          cd flat
+          echo "Voice Data Malay (ms)" | zip ../ms_0.voice.zip ms_tts.js -c
+          zip ../ms_0.voice.zip *.ogg .nomedia
+          ls -l ../ms_0.voice.zip
 
       - name: Upload pack
         uses: actions/upload-artifact@v4
